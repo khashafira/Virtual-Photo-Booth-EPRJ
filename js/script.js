@@ -9,29 +9,42 @@ const twibbon = new Image();
 twibbon.src = "assets/twibbon-4.png";
 
 let stream;
-let currentFacing = "environment";
+let currentFacing = "environment"; 
 let timerValue = 0;
 
 /* ===== CAMERA ===== */
-function startCamera() {
-  navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: currentFacing } }
-  })
-  .then(s => {
-    stream = s;
-    video.srcObject = s;
+async function startCamera() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+  }
 
-    if (currentFacing === "environment") {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: currentFacing },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      }
+    });
+
+    video.srcObject = stream;
+    await video.play();
+
+    if (currentFacing === "user") {
+      video.style.transform = "scaleX(-1)";
+    } else {
       video.style.transform = "scaleX(1)";
     }
-  })
-  .catch(() => alert("Kamera tidak dapat diakses"));
+
+  } catch (err) {
+    alert("Kamera tidak dapat diakses");
+    console.error(err);
+  }
 }
 
 startCamera();
 
 document.getElementById("switchCamera").onclick = () => {
-  stream.getTracks().forEach(t => t.stop());
   currentFacing = currentFacing === "environment" ? "user" : "environment";
   startCamera();
 };
@@ -77,35 +90,32 @@ function takePhoto() {
   navigator.vibrate?.(100);
   flash();
 
-  const OUTPUT_SIZE = 2000; 
-  const cropSize = Math.min(video.videoWidth, video.videoHeight) * 0.9;
-canvas.width = cropSize;
-canvas.height = cropSize;
+  const cropSize = Math.min(video.videoWidth, video.videoHeight);
+  canvas.width = cropSize;
+  canvas.height = cropSize;
 
-const sx = (video.videoWidth - cropSize) / 2;
-const sy = (video.videoHeight - cropSize) / 2;
+  const sx = (video.videoWidth - cropSize) / 2;
+  const sy = (video.videoHeight - cropSize) / 2;
 
-ctx.save();
+  ctx.save();
 
-if (currentFacing === "user") {
+  if (currentFacing === "user") {
+    ctx.translate(cropSize, 0);
+    ctx.scale(-1, 1);
+  }
 
-  ctx.translate(cropSize, 0);
-  ctx.scale(-1, 1);
-}
+  ctx.filter = "brightness(1.05) contrast(1.05) saturate(1.1)";
 
-ctx.filter = "brightness(1.05) contrast(1.05) saturate(1.1)";
+  ctx.drawImage(
+    video,
+    sx, sy, cropSize, cropSize,
+    0, 0, cropSize, cropSize
+  );
 
-ctx.drawImage(
-  video,
-  sx, sy, cropSize, cropSize,
-  0, 0, cropSize, cropSize
-);
+  ctx.restore();
+  ctx.filter = "none";
 
-ctx.restore();
-ctx.filter = "none";
-
-ctx.drawImage(twibbon, 0, 0, cropSize, cropSize);
-
+  ctx.drawImage(twibbon, 0, 0, cropSize, cropSize);
 
   uploadToCloudinary();
 }
@@ -125,10 +135,9 @@ function uploadToCloudinary() {
     </div>
   `;
 
-  canvas.toBlob(
-  blob => {
+  canvas.toBlob(blob => {
     if (!blob) {
-      alert("Gagal membuat gambar, silakan coba lagi");
+      alert("Gagal membuat gambar");
       return;
     }
 
@@ -148,17 +157,14 @@ function uploadToCloudinary() {
       }
       showQR(data.secure_url);
     });
-  },
-  "image/jpeg",
-  0.92
-);
+  }, "image/jpeg", 0.95);
 }
 
 /* ===== QR ===== */
 function showQR(url) {
   const downloadURL = url.replace(
     "/upload/",
-    "/upload/fl_attachment/"
+    "/upload/fl_attachment:donordarahEPRJ/"
   );
 
   document.getElementById("result").innerHTML = `
@@ -174,8 +180,5 @@ function showQR(url) {
 resetBtn.onclick = () => {
   document.getElementById("result").innerHTML = "";
   resetBtn.style.display = "none";
-
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  video.play();
 };
