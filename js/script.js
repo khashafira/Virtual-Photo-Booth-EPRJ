@@ -9,19 +9,16 @@ const twibbon = new Image();
 twibbon.src = "assets/twibbon-4.png";
 
 let stream;
-let currentFacing = "environment"; 
 let timerValue = 0;
 
 /* ===== CAMERA ===== */
 async function startCamera() {
-  if (stream) {
-    stream.getTracks().forEach(t => t.stop());
-  }
+  if (stream) stream.getTracks().forEach(t => t.stop());
 
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
-        facingMode: { ideal: currentFacing },
+        facingMode: "user",
         width: { ideal: 1920 },
         height: { ideal: 1080 }
       }
@@ -30,12 +27,6 @@ async function startCamera() {
     video.srcObject = stream;
     await video.play();
 
-    if (currentFacing === "user") {
-      video.style.transform = "scaleX(-1)";
-    } else {
-      video.style.transform = "scaleX(1)";
-    }
-
   } catch (err) {
     alert("Kamera tidak dapat diakses");
     console.error(err);
@@ -43,11 +34,6 @@ async function startCamera() {
 }
 
 startCamera();
-
-document.getElementById("switchCamera").onclick = () => {
-  currentFacing = currentFacing === "environment" ? "user" : "environment";
-  startCamera();
-};
 
 /* ===== TIMER ===== */
 document.querySelectorAll(".timer button").forEach(btn => {
@@ -90,32 +76,31 @@ function takePhoto() {
   navigator.vibrate?.(100);
   flash();
 
-  const cropSize = Math.min(video.videoWidth, video.videoHeight);
-  canvas.width = cropSize;
-  canvas.height = cropSize;
+  const size = Math.min(video.videoWidth, video.videoHeight);
+  canvas.width = size;
+  canvas.height = size;
 
-  const sx = (video.videoWidth - cropSize) / 2;
-  const sy = (video.videoHeight - cropSize) / 2;
+  const sx = (video.videoWidth - size) / 2;
+  const sy = (video.videoHeight - size) / 2;
 
   ctx.save();
 
-  if (currentFacing === "user") {
-    ctx.translate(cropSize, 0);
-    ctx.scale(-1, 1);
-  }
+  // 🔥 MIRROR SELALU (PREVIEW = HASIL)
+  ctx.translate(size, 0);
+  ctx.scale(-1, 1);
 
   ctx.filter = "brightness(1.05) contrast(1.05) saturate(1.1)";
 
   ctx.drawImage(
     video,
-    sx, sy, cropSize, cropSize,
-    0, 0, cropSize, cropSize
+    sx, sy, size, size,
+    0, 0, size, size
   );
 
   ctx.restore();
   ctx.filter = "none";
 
-  ctx.drawImage(twibbon, 0, 0, cropSize, cropSize);
+  ctx.drawImage(twibbon, 0, 0, size, size);
 
   uploadToCloudinary();
 }
@@ -136,11 +121,6 @@ function uploadToCloudinary() {
   `;
 
   canvas.toBlob(blob => {
-    if (!blob) {
-      alert("Gagal membuat gambar");
-      return;
-    }
-
     const formData = new FormData();
     formData.append("file", blob, "donordarahEPRJ.jpg");
     formData.append("upload_preset", "TwibbonDonorDarah");
@@ -150,13 +130,7 @@ function uploadToCloudinary() {
       body: formData
     })
     .then(res => res.json())
-    .then(data => {
-      if (!data.secure_url) {
-        alert("Upload gagal");
-        return;
-      }
-      showQR(data.secure_url);
-    });
+    .then(data => showQR(data.secure_url));
   }, "image/jpeg", 0.95);
 }
 
