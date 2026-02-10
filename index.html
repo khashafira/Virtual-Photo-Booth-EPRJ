@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Virtual Photo Booth Donor Darah Easton Park Residence Jatinangor</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+  <div class="app">
+
+    <h1>Virtual Photo Booth Donor Darah Easton Park Residence Jatinangor</h1>
+    <p class="subtitle">Ambil foto dan scan QR untuk mengunduh hasilnya</p>
+
+    <div class="camera-wrapper">
+      <video id="camera" autoplay playsinline></video>
+    </div>
+
+    <div class="controls">
+      <div class="timer">
+        <button data-time="0" class="active">Off</button>
+        <button data-time="3">3s</button>
+        <button data-time="5">5s</button>
+      </div>
+
+      <button id="switchCamera" class="icon-btn">
+        <img src="assets/image.png" alt="Switch Camera">
+    </button>
+    </div>
+
+    <button id="capture">
+      <img src="assets/cam.png" alt="camera" />
+      Ambil Foto
+    </button>
+
+    <canvas id="canvas" hidden></canvas>
+
+    <div id="result"></div>
+    <button id="reset" style="display:none">Berikutnya</button>
+
+  </div>
+
+  <div id="countdown"></div>
+  <div id="flash"></div>
+
+  <script src="js/script.js"></script>
+</body>
+</html>
