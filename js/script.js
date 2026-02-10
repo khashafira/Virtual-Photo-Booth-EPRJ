@@ -20,6 +20,10 @@ function startCamera() {
   .then(s => {
     stream = s;
     video.srcObject = s;
+
+    if (currentFacing === "environment") {
+      video.style.transform = "scaleX(1)";
+    }
   })
   .catch(() => alert("Kamera tidak dapat diakses"));
 }
