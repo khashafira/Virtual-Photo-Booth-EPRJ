@@ -78,40 +78,34 @@ function takePhoto() {
   flash();
 
   const OUTPUT_SIZE = 2000; 
-  const cropSize = Math.min(video.videoWidth, video.videoHeight) * 0.85;
+  const cropSize = Math.min(video.videoWidth, video.videoHeight) * 0.9;
+canvas.width = cropSize;
+canvas.height = cropSize;
 
-  canvas.width = OUTPUT_SIZE;
-  canvas.height = OUTPUT_SIZE;
+const sx = (video.videoWidth - cropSize) / 2;
+const sy = (video.videoHeight - cropSize) / 2;
 
-  const sx = (video.videoWidth - cropSize) / 2;
-  const sy = (video.videoHeight - cropSize) / 2;
-  const scale = OUTPUT_SIZE / cropSize;
+ctx.save();
 
-  ctx.save();
+if (currentFacing === "user") {
 
-  ctx.translate(OUTPUT_SIZE, 0);
+  ctx.translate(cropSize, 0);
   ctx.scale(-1, 1);
+}
 
-  ctx.scale(scale, scale);
+ctx.filter = "brightness(1.05) contrast(1.05) saturate(1.1)";
 
-  ctx.filter = "brightness(1.05) contrast(1.05) saturate(1.1)";
+ctx.drawImage(
+  video,
+  sx, sy, cropSize, cropSize,
+  0, 0, cropSize, cropSize
+);
 
-  ctx.drawImage(
-    video,
-    sx,
-    sy,
-    cropSize,
-    cropSize,
-    0,
-    0,
-    cropSize,
-    cropSize
-  );
+ctx.restore();
+ctx.filter = "none";
 
-  ctx.restore();
-  ctx.filter = "none";
+ctx.drawImage(twibbon, 0, 0, cropSize, cropSize);
 
-  ctx.drawImage(twibbon, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
 
   uploadToCloudinary();
 }
