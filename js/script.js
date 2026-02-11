@@ -8,24 +8,41 @@ const shutterSound = new Audio("assets/shutter.mp3");
 const twibbon = new Image();
 twibbon.src = "assets/twibbon-4.png";
 
-let stream;
+let stream = null;
 let timerValue = 0;
+let currentFacing = "user";
 
-/* ===== CAMERA ===== */
+/* ================= CAMERA ================= */
+
 async function startCamera() {
-  if (stream) stream.getTracks().forEach(t => t.stop());
-
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
+
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+
+    let constraints = {
       video: {
-        facingMode: "user",
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
+        facingMode: { exact: currentFacing }
       }
-    });
+    };
+
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: true
+      });
+    }
 
     video.srcObject = stream;
     await video.play();
+
+    /* mirror preview hanya kamera depan */
+    video.style.transform =
+      currentFacing === "user"
+        ? "scaleX(-1)"
+        : "scaleX(1)";
 
   } catch (err) {
     alert("Kamera tidak dapat diakses");
@@ -35,10 +52,25 @@ async function startCamera() {
 
 startCamera();
 
-/* ===== TIMER ===== */
+/* ===== SWITCH CAMERA ===== */
+
+document.getElementById("switchCamera").onclick = async () => {
+  currentFacing =
+    currentFacing === "user"
+      ? "environment"
+      : "user";
+
+  await startCamera();
+};
+
+/* ================= TIMER ================= */
+
 document.querySelectorAll(".timer button").forEach(btn => {
   btn.onclick = () => {
-    document.querySelectorAll(".timer button").forEach(b => b.classList.remove("active"));
+    document
+      .querySelectorAll(".timer button")
+      .forEach(b => b.classList.remove("active"));
+
     btn.classList.add("active");
     timerValue = parseInt(btn.dataset.time);
   };
@@ -46,11 +78,13 @@ document.querySelectorAll(".timer button").forEach(btn => {
 
 function startCountdown(seconds, callback) {
   const cd = document.getElementById("countdown");
+
   cd.style.display = "flex";
   cd.textContent = seconds;
 
   const interval = setInterval(() => {
     seconds--;
+
     if (seconds <= 0) {
       clearInterval(interval);
       cd.style.display = "none";
@@ -61,7 +95,8 @@ function startCountdown(seconds, callback) {
   }, 1000);
 }
 
-/* ===== CAPTURE ===== */
+/* ================= CAPTURE ================= */
+
 captureBtn.onclick = () => {
   if (timerValue > 0) {
     startCountdown(timerValue, takePhoto);
@@ -71,12 +106,14 @@ captureBtn.onclick = () => {
 };
 
 function takePhoto() {
+
   shutterSound.currentTime = 0;
   shutterSound.play();
   navigator.vibrate?.(100);
   flash();
 
   const size = Math.min(video.videoWidth, video.videoHeight);
+
   canvas.width = size;
   canvas.height = size;
 
@@ -85,9 +122,11 @@ function takePhoto() {
 
   ctx.save();
 
-  // 🔥 MIRROR SELALU (PREVIEW = HASIL)
-  ctx.translate(size, 0);
-  ctx.scale(-1, 1);
+  /* mirror hanya kamera depan */
+  if (currentFacing === "user") {
+    ctx.translate(size, 0);
+    ctx.scale(-1, 1);
+  }
 
   ctx.filter = "brightness(1.05) contrast(1.05) saturate(1.1)";
 
@@ -100,20 +139,24 @@ function takePhoto() {
   ctx.restore();
   ctx.filter = "none";
 
+  /* twibbon overlay */
   ctx.drawImage(twibbon, 0, 0, size, size);
 
   uploadToCloudinary();
 }
 
-/* ===== FLASH ===== */
+/* ================= FLASH ================= */
+
 function flash() {
   const f = document.getElementById("flash");
   f.classList.add("active");
   setTimeout(() => f.classList.remove("active"), 300);
 }
 
-/* ===== UPLOAD ===== */
+/* ================= UPLOAD ================= */
+
 function uploadToCloudinary() {
+
   document.getElementById("result").innerHTML = `
     <div class="qr-card">
       <p class="loading">⏳ Memproses foto…</p>
@@ -121,6 +164,7 @@ function uploadToCloudinary() {
   `;
 
   canvas.toBlob(blob => {
+
     const formData = new FormData();
     formData.append("file", blob, "donordarahEPRJ.jpg");
     formData.append("upload_preset", "TwibbonDonorDarah");
@@ -129,13 +173,20 @@ function uploadToCloudinary() {
       method: "POST",
       body: formData
     })
-    .then(res => res.json())
-    .then(data => showQR(data.secure_url));
-  }, "image/jpeg", 0.95);
+      .then(res => res.json())
+      .then(data => showQR(data.secure_url))
+      .catch(err => {
+        console.error(err);
+        alert("Upload gagal");
+      });
+
+  }, "image/jpeg", 0.98); // kualitas dinaikin
 }
 
-/* ===== QR ===== */
+/* ================= QR ================= */
+
 function showQR(url) {
+
   const downloadURL = url.replace(
     "/upload/",
     "/upload/fl_attachment:donordarahEPRJ/"
@@ -150,6 +201,8 @@ function showQR(url) {
 
   resetBtn.style.display = "block";
 }
+
+/* ================= RESET ================= */
 
 resetBtn.onclick = () => {
   document.getElementById("result").innerHTML = "";
